@@ -1,28 +1,35 @@
 
+
 import streamlit as st
-from sqlalchemy import create_engine
+import psycopg2
 import pandas as pd
+import plotly.express as px
+ 
+engine = psycopg2.connect(
+                  host = "localhost",
+                  port = 5432,
+                  database = "ola_project",
+                  user = "postgres",
+                  password = "63693103k@"
+ ) 
 
-# Replace with your credentials
-engine = create_engine('postgresql://postgres:63693103k@localhost:5432/ola_project')
+# Sidebar Filters
+st.sidebar.title("Filters")
+vehicle_type = st.sidebar.selectbox("Vehicle Type", ["All", "Mini", "Prime", "Auto"])
+date_range = st.sidebar.date_input("Date Range", [])
 
-def fetch_data(query):
-    with engine.connect() as conn:
-        return pd.read_sql(query, conn)
+# Query & Data
+query = "SELECT * FROM ola_rides"
+df = pd.read_sql(query, engine)
 
-df = pd.read_csv("ola_rides.csv")
+# Apply filters
+if vehicle_type != "All":
+    df = df[df['vehicle_type'] == vehicle_type]
 
+if date_range:
+    df = df[(df['date'] >= str(date_range[0])) & (df['date'] <= str(date_range[1]))]
 
-total_rides = df.shape[0]
-total_customers = df['Customer_ID'].nunique()
-completed_rides = df[df['Booking_Status'] == 'Completed'].shape[0]
-cancellation_rate = round(
-    df[df['Booking_Status'] == 'Canceled'].shape[0] / total_rides * 100, 2
-)
-
-st.metric("Total Rides", total_rides)
-st.metric("Completed Rides", completed_rides)
-st.metric("Cancellation Rate", f"{cancellation_rate}%")
-
-
+# Display
+st.title("Ola Ride Insights Dashboard")
+st.plotly_chart(px.bar(df, x='date', y='ride_distance', title='Daily Revenue'))
 
